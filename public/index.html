@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>RePia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css"
+    />
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/4.12.1/firebase.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/4.12.1/firebase-firestore.js"></script>
+
+    <style>
+      :root {
+        --black:        #0a0c0a;
+        --surface-1:    #111410;
+        --surface-2:    #181c16;
+        --surface-3:    #1f241c;
+        --border:       #2a3227;
+        --green-dark:   #2d5c27;
+        --green-mid:    #4a8c3f;
+        --green-bright: #6bbf5a;
+        --green-light:  #90d47f;
+        --white:        #f0f4ef;
+        --grey-1:       #c8d4c5;
+        --grey-2:       #7a8f76;
+        --grey-3:       #3d4e3a;
+      }
+
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      html, body {
+        height: 100%;
+        background-color: var(--black);
+        color: var(--white);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 15px;
+        line-height: 1.6;
+      }
+
+      /* ── NOISE TEXTURE OVERLAY ── */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+        background-size: 180px;
+        pointer-events: none;
+        z-index: 0;
+        opacity: 0.6;
+      }
+
+      /* ── HEADER ── */
+      header {
+        position: relative;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 28px 48px 24px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(180deg, rgba(45,92,39,0.12) 0%, transparent 100%);
+      }
+
+      header .logo-wrap {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      header .logo-wrap img {
+        height: 44px;
+        width: auto;
+        filter: drop-shadow(0 0 12px rgba(107,191,90,0.35));
+      }
+
+      header h1 {
+        font-family: 'Syne', sans-serif;
+        font-weight: 800;
+        font-size: 1.9rem;
+        letter-spacing: -0.02em;
+        color: var(--white);
+        margin: 0;
+      }
+
+      header h1 span {
+        color: var(--green-bright);
+      }
+
+      header .tagline {
+        margin-left: auto;
+        font-size: 0.75rem;
+        font-weight: 300;
+        color: var(--grey-2);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      /* ── GLOW RING ── */
+      .glow-ring {
+        position: fixed;
+        top: -220px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(74,140,63,0.14) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* ── MAIN CONTAINER ── */
+      .page-wrap {
+        position: relative;
+        z-index: 1;
+        min-height: calc(100vh - 97px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 56px 24px 80px;
+      }
+
+      /* ── CARD ── */
+      .card-panel {
+        width: 100%;
+        max-width: 520px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 40px 44px;
+        box-shadow:
+          0 4px 24px rgba(0,0,0,0.45),
+          0 0 0 1px rgba(107,191,90,0.06),
+          inset 0 1px 0 rgba(255,255,255,0.04);
+        animation: fadeUp 0.5s ease both;
+      }
+
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(18px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      .card-panel h2 {
+        font-family: 'Syne', sans-serif;
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: var(--grey-1);
+        margin-bottom: 28px;
+        letter-spacing: 0.01em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .card-panel h2::before {
+        content: '';
+        display: block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--green-bright);
+        box-shadow: 0 0 8px var(--green-bright);
+        flex-shrink: 0;
+      }
+
+      /* ── FORM FIELDS ── */
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--grey-2);
+        margin-bottom: 8px;
+      }
+
+      .form-control {
+        width: 100%;
+        background: var(--surface-3);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 11px 15px;
+        color: var(--white);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.9rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        outline: none;
+      }
+
+      .form-control:focus {
+        border-color: var(--green-mid);
+        box-shadow: 0 0 0 3px rgba(74,140,63,0.2);
+        background: var(--surface-3);
+        color: var(--white);
+      }
+
+      .form-control::placeholder {
+        color: var(--grey-3);
+      }
+
+      /* ── BUTTONS ── */
+      .btn {
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 500;
+        font-size: 0.85rem;
+        letter-spacing: 0.04em;
+        border-radius: 8px;
+        padding: 10px 22px;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        border: none;
+      }
+
+      .btn-default, #save, #login, #signup {
+        background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%);
+        color: #fff;
+        border: 1px solid var(--green-mid);
+        box-shadow: 0 2px 10px rgba(74,140,63,0.3);
+      }
+
+      .btn-default:hover, #save:hover, #login:hover, #signup:hover {
+        background: linear-gradient(135deg, var(--green-mid) 0%, var(--green-bright) 100%);
+        box-shadow: 0 4px 16px rgba(107,191,90,0.4);
+        transform: translateY(-1px);
+        color: #fff;
+      }
+
+      .btn-outline-primary, #newUser {
+        background: transparent;
+        color: var(--green-bright);
+        border: 1px solid var(--green-dark) !important;
+      }
+
+      .btn-outline-primary:hover, #newUser:hover {
+        background: rgba(74,140,63,0.12);
+        border-color: var(--green-mid) !important;
+        color: var(--green-light);
+        transform: translateY(-1px);
+      }
+
+      .btn-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 8px;
+      }
+
+      /* ── DIVIDER ── */
+      .form-divider {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 28px 0;
+      }
+
+      /* ── ALERTS ── */
+      #alert {
+        position: fixed;
+        bottom: 32px;
+        right: 32px;
+        z-index: 9999;
+        min-width: 260px;
+        max-width: 360px;
+        padding: 14px 20px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        display: none;
+        animation: slideIn 0.3s ease;
+        border-left: 3px solid transparent;
+        backdrop-filter: blur(8px);
+      }
+
+      @keyframes slideIn {
+        from { opacity: 0; transform: translateX(20px); }
+        to   { opacity: 1; transform: translateX(0); }
+      }
+
+      .alert-success {
+        background: rgba(45,92,39,0.85);
+        border-left-color: var(--green-bright);
+        color: var(--green-light);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      }
+
+      .alert-danger {
+        background: rgba(80,20,20,0.85);
+        border-left-color: #e05555;
+        color: #f5a0a0;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      }
+
+      /* ── TABLE ── */
+      .table-section {
+        width: 100%;
+        max-width: 860px;
+        margin-top: 40px;
+        animation: fadeUp 0.5s 0.1s ease both;
+      }
+
+      .table-section h3 {
+        font-family: 'Syne', sans-serif;
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--grey-2);
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        margin-bottom: 16px;
+        padding-left: 4px;
+      }
+
+      .table-responsive {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      }
+
+      table#listItems {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--surface-2);
+        margin: 0;
+      }
+
+      table#listItems thead th {
+        background: var(--surface-3);
+        color: var(--grey-2);
+        font-family: 'Syne', sans-serif;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      table#listItems tbody tr {
+        border-bottom: 1px solid var(--border);
+        transition: background 0.15s;
+      }
+
+      table#listItems tbody tr:last-child {
+        border-bottom: none;
+      }
+
+      table#listItems tbody tr:hover {
+        background: var(--surface-3);
+      }
+
+      table#listItems td {
+        padding: 14px 20px;
+        color: var(--grey-1);
+        font-size: 0.88rem;
+      }
+
+      /* action links inside table */
+      table#listItems td a,
+      table#listItems td button {
+        color: var(--green-bright);
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 0.82rem;
+        font-weight: 500;
+        padding: 4px 10px;
+        border-radius: 6px;
+        transition: background 0.15s, color 0.15s;
+        text-decoration: none;
+      }
+
+      table#listItems td a:hover,
+      table#listItems td button:hover {
+        background: rgba(107,191,90,0.12);
+        color: var(--green-light);
+      }
+
+      /* ── BOOTSTRAP OVERRIDES ── */
+      .col-form-label {
+        color: var(--grey-2);
+        font-size: 0.72rem;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding-top: 12px;
+      }
+
+      /* ── FOOTER ── */
+      footer {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        padding: 20px;
+        color: var(--grey-3);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        border-top: 1px solid var(--border);
+      }
+
+      /* ── RESPONSIVE ── */
+      @media (max-width: 600px) {
+        header { padding: 20px 24px; }
+        header .tagline { display: none; }
+        .card-panel { padding: 28px 24px; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="glow-ring"></div>
+
+    <header>
+      <div class="logo-wrap">
+        <img src="logo.png" alt="RePia logo" />
+        <h1>Re<span>Pia</span></h1>
+      </div>
+      <span class="tagline">Gestió d'ítems</span>
+    </header>
+
+    <div class="page-wrap">
+
+      <!-- LOGIN FORM -->
+      <div class="card-panel" id="loginForm">
+        <h2>Accés</h2>
+        <div class="form-group">
+          <label for="loginEmail">Correu electrònic</label>
+          <input type="email" class="form-control" id="loginEmail" placeholder="usuari@exemple.com" />
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Contrasenya</label>
+          <input type="password" class="form-control" id="loginPassword" placeholder="••••••••" />
+        </div>
+        <div class="btn-actions">
+          <button type="button" id="newUser" class="btn btn-outline-primary">
+            Registrar nou usuari
+          </button>
+          <button type="button" id="login" class="btn btn-default">
+            Entrar
+          </button>
+        </div>
+      </div>
+
+      <!-- SIGNUP FORM -->
+      <div class="card-panel" id="signupForm" style="display: none">
+        <h2>Registre</h2>
+        <div class="form-group">
+          <label for="signupEmail">Correu</label>
+          <input type="email" class="form-control" id="signupEmail" placeholder="usuari@exemple.com" />
+        </div>
+        <div class="form-group">
+          <label for="signupPassword">Contrasenya</label>
+          <input type="password" class="form-control" id="signupPassword" placeholder="••••••••" />
+        </div>
+        <div class="form-group">
+          <label for="signupPasswordConfirm">Confirmar contrasenya</label>
+          <input type="password" class="form-control" id="signupPasswordConfirm" placeholder="••••••••" />
+        </div>
+        <div class="btn-actions">
+          <button type="button" id="signup" class="btn btn-default">
+            Enviar
+          </button>
+        </div>
+      </div>
+
+      <!-- ITEMS FORM -->
+      <div class="card-panel" id="itemsForm" style="display: none">
+        <h2>Nou ítem</h2>
+        <div class="form-group">
+          <label for="title">Títol</label>
+          <input type="text" class="form-control" id="title" placeholder="Títol de l'ítem..." />
+        </div>
+        <div class="form-group">
+          <label for="content">Contingut</label>
+          <input type="text" class="form-control" id="content" placeholder="Descripció o contingut..." />
+        </div>
+        <div class="btn-actions">
+          <button type="button" id="save" class="btn btn-default">
+            Guardar
+          </button>
+        </div>
+        <input type="hidden" id="elementId" />
+      </div>
+
+      <!-- TABLE SECTION -->
+      <div class="table-section" id="tableSection" style="display:none">
+        <h3>Ítems registrats</h3>
+        <div class="table-responsive">
+          <table class="table table-hover" id="listItems" style="display: none"></table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ALERT -->
+    <div id="alert" role="alert"></div>
+
+    <footer>RePia &nbsp;·&nbsp; Gestió sostenible</footer>
+
+    <script language="javascript" src="js/config.js"></script>
+    <script language="javascript" src="js/firestore.js"></script>
+    <script language="javascript" src="js/items.js"></script>
+    <script language="javascript">
+
+      function showAlert(text, type) {
+        const alertEl = document.getElementById("alert");
+        alertEl.innerText = text;
+        alertEl.className = `alert ${type}`;
+        alertEl.style.display = "block";
+        setTimeout(() => {
+          alertEl.style.display = "none";
+        }, 2000);
+      }
+
+      window.addEventListener("load", async () => {
+        await loadItems();
+      });
+
+      document.getElementById("login").addEventListener("click", async () => {
+        const email = document.getElementById("loginEmail").value;
+        const password = document.getElementById("loginPassword").value;
+        try {
+          await auth.signInWithEmailAndPassword(email, password);
+          showAlert("Usuari autenticat", "alert-success");
+          document.getElementById("loginForm").style.display = "none";
+          document.getElementById("itemsForm").style.display = "block";
+          document.getElementById("listItems").style.display = "table";
+          document.getElementById("tableSection").style.display = "block";
+        } catch (error) {
+          showAlert("Error d'autenticació", "alert-danger");
+        }
+      });
+
+      document.getElementById("newUser").addEventListener("click", () => {
+        document.getElementById("loginForm").style.display = "none";
+        document.getElementById("signupForm").style.display = "block";
+      });
+
+      document.getElementById("signup").addEventListener("click", async () => {
+        const email = document.getElementById("signupEmail").value;
+        const password = document.getElementById("signupPassword").value;
+        const passwordConfirm = document.getElementById("signupPasswordConfirm").value;
+
+        if (!email || email.indexOf("@") < 1) {
+          showAlert("Email incorrecte", "alert-danger"); return;
+        }
+        if (!password) {
+          showAlert("La contrasenya és obligatòria", "alert-danger"); return;
+        }
+        if (password.length < 8) {
+          showAlert("La contrasenya ha de tenir una longitud mínima de 8 caràcters", "alert-danger"); return;
+        }
+        if (password !== passwordConfirm) {
+          showAlert("Les contrasenyes no coincideixen", "alert-danger"); return;
+        }
+
+        try {
+          await auth.createUserWithEmailAndPassword(email, password);
+          showAlert("Usuari creat correctament", "alert-success");
+          document.getElementById("loginForm").style.display = "block";
+          document.getElementById("signupForm").style.display = "none";
+        } catch (error) {
+          showAlert("Error al intentar crear l'usuari", "alert-danger");
+        }
+      });
+
+      document.getElementById("save").addEventListener("click", async () => {
+        const id = document.getElementById("elementId").value;
+        const title = document.getElementById("title").value;
+        const content = document.getElementById("content").value;
+        const doc = { title, content };
+        if (!id) {
+          await addItem(doc);
+        } else {
+          await updateItem(id, doc);
+        }
+      });
+    </script>
+  </body>
+</html>
