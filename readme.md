@@ -1,5 +1,5 @@
 # Repia
 
-##Base de dades
+## Base de dades
 
 <img src="img/BasededadesRePia.png">
