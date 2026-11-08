@@ -2,13 +2,21 @@
 const items = db.collection("items");
 
 /**
+ * Retorna l'UID de l'usuari amb la sessió iniciada, o null si no n'hi ha cap.
+ * Cada ítem es guarda amb l'UID del seu propietari i cada usuari només veu els seus.
+ */
+function currentUid() {
+  return auth.currentUser ? auth.currentUser.uid : null;
+}
+
+/**
  * Afegeix un nou document a la col·lecció.
  * @param {Object} doc - Objecte amb les propietats del nou ítem.
  */
 async function addItem(doc) {
   try {
-    // Esperem que Firebase afegeixi el document
-    await add(items, doc);
+    // Esperem que Firebase afegeixi el document, marcat amb el seu propietari
+    await add(items, { ...doc, uid: currentUid() });
 
     // Recàrrega la llista d'ítems per a mostrar el nou element
     await loadItems();
@@ -68,15 +76,35 @@ async function editItem(id) {
 }
 
 /**
- * Recupera tots els documents i els mostra en una taula.
+ * Crea un botó de la taula amb el text, les classes i l'acció indicades.
+ */
+function createButton(text, className, onClick) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = className;
+  button.textContent = text;
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+/**
+ * Recupera els documents de l'usuari actual i els mostra en una taula.
  */
 async function loadItems() {
+  const table = document.getElementById("listItems");
+  const uid = currentUid();
+
+  // Sense sessió iniciada no es mostra res
+  if (!uid) {
+    table.innerHTML = "";
+    return;
+  }
+
   try {
-    // Obtenim l'array de documents des de Firestore
-    const arrayItems = await selectAll(items);
+    // Obtenim només els documents de l'usuari actual
+    const arrayItems = await selectWhere(items, "uid", "==", uid);
 
     // Capçalera de la taula
-    const table = document.getElementById("listItems");
     table.innerHTML = `
       <tr>
         <th>Títol</th>
@@ -85,23 +113,20 @@ async function loadItems() {
       </tr>
     `;
 
-    // Iterem cada document i construïm una fila per a la taula
+    // Iterem cada document i construïm una fila per a la taula.
+    // Fem servir textContent (no innerHTML) perquè el text de l'usuari
+    // es mostri tal qual i no s'executi mai com a HTML o JavaScript.
     arrayItems.forEach((doc) => {
       const { title, content } = doc.data();
-      table.innerHTML += `
-        <tr>
-          <td>${title}</td>
-          <td>${content}</td>
-          <td>
-            <button type="button" class="btn btn-danger float-right" onclick="deleteItem('${doc.id}')">
-              Eliminar
-            </button>
-            <button type="button" class="btn btn-primary mr-2 float-right" onclick="editItem('${doc.id}')">
-              Editar
-            </button>
-          </td>
-        </tr>
-      `;
+      const row = table.insertRow();
+      row.insertCell().textContent = title;
+      row.insertCell().textContent = content;
+
+      const actions = row.insertCell();
+      actions.append(
+        createButton("Eliminar", "btn btn-danger float-right", () => deleteItem(doc.id)),
+        createButton("Editar", "btn btn-primary mr-2 float-right", () => editItem(doc.id))
+      );
     });
   } catch (error) {
     // Error mostrant la taula

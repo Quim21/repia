@@ -96,6 +96,9 @@
                 <button type="button" id="save" class="btn btn-default float-right">
                   Guardar
                 </button>
+                <button type="button" id="logout" class="btn btn-outline-secondary float-right mr-3">
+                  Tancar sessió
+                </button>
               </div>
             </div>
             <input type="hidden" id="elementId" />
@@ -130,9 +133,14 @@
       }, 2000);
     }
 
-    // Quan la pàgina hagi carregat completament, carreguem els ítems
-    window.addEventListener("load", async () => {
-      await loadItems(); // Carrega i mostra la llista d'ítems
+    // Cada cop que canvia la sessió (entrar, registrar-se, sortir o recarregar la pàgina)
+    // mostrem la vista que toca i carreguem només els ítems de l'usuari
+    auth.onAuthStateChanged(async (user) => {
+      document.getElementById("loginForm").style.display = user ? "none" : "block";
+      document.getElementById("signupForm").style.display = "none";
+      document.getElementById("itemsForm").style.display = user ? "block" : "none";
+      document.getElementById("listItems").style.display = user ? "table" : "none";
+      await loadItems();
     });
 
     // Handler per a l'inici de sessió
@@ -142,14 +150,10 @@
       const password = document.getElementById("loginPassword").value;
 
       try {
-        // Intentem autenticar l'usuari amb Firebase Auth
+        // Intentem autenticar l'usuari amb Firebase Auth.
+        // Si té èxit, onAuthStateChanged canvia la vista.
         await auth.signInWithEmailAndPassword(email, password);
-
-        // Si té èxit, mostrem missatge i canviem la UI
         showAlert("Usuari autenticat", "alert-success");
-        document.getElementById("loginForm").style.display = "none";
-        document.getElementById("itemsForm").style.display = "block";
-        document.getElementById("listItems").style.display = "table";
       } catch (error) {
         // En cas d'error, mostrem alerta d'avís
         showAlert("Error d’autenticació", "alert-danger");
@@ -193,10 +197,8 @@
         // Creem l'usuari amb Firebase Auth
         await auth.createUserWithEmailAndPassword(email, password);
 
-        // Si té èxit, mostrem missatge i tornem a la vista de login
+        // Firebase inicia la sessió del nou usuari i onAuthStateChanged canvia la vista
         showAlert("Usuari creat correctament", "alert-success");
-        document.getElementById("loginForm").style.display = "block";
-        document.getElementById("signupForm").style.display = "none";
       } catch (error) {
         // En cas d'error, mostrem alerta
         showAlert("Error al intentar crear l'usuari", "alert-danger");
@@ -219,6 +221,12 @@
         await updateItem(id, doc);
       }
     });
-	
+
+    // Handler per tancar la sessió
+    document.getElementById("logout").addEventListener("click", async () => {
+      await auth.signOut();
+      showAlert("Sessió tancada", "alert-success");
+    });
+
   </script>
 </html>
