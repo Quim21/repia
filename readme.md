@@ -6,12 +6,32 @@ crean, editan, listan y eliminan en **Cloud Firestore**.
 
 Proyecto del módulo de desarrollo web en entorno cliente (DAW).
 
+▶ **Demo:** [quim21.github.io/repia](https://quim21.github.io/repia/). Crea un usuario de prueba para usarla.
+
 ## Funcionalidades
 
 - **Registro de usuarios** con validación del formulario: formato del email, contraseña de al menos 8 caracteres y confirmación de contraseña.
-- **Inicio de sesión** con email y contraseña.
+- **Inicio y cierre de sesión** con email y contraseña. La vista cambia sola según haya sesión o no.
 - **CRUD completo** sobre la colección `items` de Firestore: crear, listar, editar y eliminar.
+- **Datos privados por usuario:** cada elemento se guarda con el UID de su propietario y cada usuario solo ve los suyos.
 - **Mensajes de estado** (éxito o error) que desaparecen solos a los 2 segundos.
+
+## Seguridad
+
+- El texto que escriben los usuarios se pinta con `textContent`, nunca con `innerHTML`, para que no se pueda inyectar HTML ni JavaScript (XSS).
+- Las reglas de Firestore solo dejan leer y modificar un elemento a su propietario:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /items/{itemId} {
+      allow read, update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    }
+  }
+}
+```
 
 ## Tecnologías
 
